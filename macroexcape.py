@@ -26,6 +26,11 @@ def replace_dd(text):
     
     return regex.sub(pattern, lambda m: r'\\mathrm{d}\{' + m.group(1)[1:-1] + r'\}', text)
 
+def replace_expval(text):
+    pattern = r'\\expval(\{(?:[^{}]+|(?1))*\})'
+    
+    return regex.sub(pattern, lambda m: r'\left\langle ' + m.group(1)[1:-1] + r'\righr\rangle ', text)
+
 def replace_N(text):
     pattern = r'\\N(?![a-zA-Z0-9])'
     
@@ -141,10 +146,25 @@ def replace_blo(text):
     
     return regex.sub(pattern, r'\\mathscr{B} ', text)
 
+def replace_cpt(text):
+    pattern = r'\\cpt(?![a-zA-Z0-9])'
+    
+    return regex.sub(pattern, r'\\mathscr{K} ', text)
+
+def replace_fnrank(text):
+    pattern = r'\\fnrank(?![a-zA-Z0-9])'
+    
+    return regex.sub(pattern, r'\\mathscr{F} ', text)
+
 def replace_Cont(text):
     pattern = r'\\Cont(?![a-zA-Z0-9])'
     
     return regex.sub(pattern, r'\\mathrm{C} ', text)
+
+def replace_Lp(text):
+    pattern = r'\\Lp(?![a-zA-Z0-9])'
+    
+    return regex.sub(pattern, r'\\mathrm{L} ', text)
 
 def replace_ordinal(text):
     pattern = r'\\ordinal'
@@ -154,12 +174,12 @@ def replace_ordinal(text):
 def replace_qty(text):
     pattern = r'\\qty(\{(?:[^{}]+|(?1))*\})'
     
-    return regex.sub(pattern, lambda m: r'\\left\\{ ' + m.group(1)[1:-1] + r' \\right\\{', text)
+    return regex.sub(pattern, lambda m: r'\left\\{ ' + m.group(1)[1:-1] + r' \right\\{', text)
 
 def replace_qty2(text):
     pattern = r'\\qty(\((?:[^()]+|(?1))*\))'
     
-    return regex.sub(pattern, lambda m: r'\\left( ' + m.group(1)[1:-1] + r' \\right)', text)
+    return regex.sub(pattern, lambda m: r'\left( ' + m.group(1)[1:-1] + r' \right)', text)
 
 def replace_implies(text):
     pattern = r'\\implies'
@@ -187,6 +207,7 @@ def replace_all(text):
     text = replace_textbf(text)
     text = replace_textit(text)
     text = replace_dd(text)
+    text = replace_expval(text)
     text = replace_N(text)
     text = replace_Z(text)
     text = replace_Q(text)
@@ -211,6 +232,9 @@ def replace_all(text):
     text = replace_st(text)
     text = replace_blo(text)
     text = replace_Cont(text)
+    text = replace_cpt(text)
+    text = replace_fnrank(text)
+    text = replace_Lp(text)
     text = replace_ordinal(text)
     text = replace_qty(text)
     text = replace_qty2(text)

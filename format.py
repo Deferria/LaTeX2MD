@@ -3,7 +3,7 @@ import json
 
 def escape_markdown(text: str) -> str:
     # 转义 Markdown 特殊字符
-    return text.replace('*', '\\*').replace('~', '\\~').replace('`', '\\`').replace('|', '\\|')
+    return text.replace('~', '\\~').replace('`', '\\`').replace('|', '\\|')
 
 def format(json_path: str) -> str:
     with open(json_path, 'r', encoding='utf-8') as f:

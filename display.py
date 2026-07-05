@@ -33,10 +33,11 @@ def display(json_path: str) -> str:
         data = json.load(f)
     markdown = []
     for item in data:
+        content = item.get('content', '')
         if item['env'] == "rmk":
-            markdown.append(f"> *{env_to_md.get(item['env'], item['env'])}*: {item['content']}")
+            markdown.append(f"> *{env_to_md.get(item['env'], item['env'])}*: {content.replace('\n', '\n> ')}")
         elif item['env'] == "prf":
-            markdown.append(f"> *{env_to_md.get(item['env'], item['env'])}*:\n{item['content']}")
+            markdown.append(f"> *{env_to_md.get(item['env'], item['env'])}*: {content.replace('\n', '\n> ')}")
             
         else:
             disp_str = f"#### {env_to_md.get(item['env'], item['env'])}: {item['name']}"
