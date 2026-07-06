@@ -1,255 +1,160 @@
 import regex
 import json
 
-def replace_norm_recursive(text):
-    pattern = r'\\norm(\{(?:[^{}]+|(?1))*\})'
-    
-    return regex.sub(pattern, lambda m: r'\left\lVert ' + m.group(1)[1:-1] + r' \right\rVert', text)
+from typing import Callable, List, Literal
 
-def replace_abs_recursive(text):
-    pattern = r'\\abs(\{(?:[^{}]+|(?1))*\})'
-    
-    return regex.sub(pattern, lambda m: r'\left\lvert ' + m.group(1)[1:-1] + r' \right\rvert', text)
+"""
+Replace some LaTeX commands with their Markdown equivalents in a given text. 
 
-def replace_textbf(text):
-    pattern = r'\\textbf\{(.*?)\}'
-    
-    return regex.sub(pattern, r'**\1**', text)
+The order should be:
 
-def replace_textit(text):
-    pattern = r'\\textit\{((?:[^{}]+|\{(?R)\})*)\}'
+1. Primitive LaTeX markups (e.g. \\textbf{})
+2. Math operators in other LaTeX packages (e.g. \\norm{}). They might be nested, so we need to use recursive regex patterns.
+3. Declared math operators in the preamble (e.g. \\N, \\R, \\C, etc.)
+4. Hyperlinks (e.g. \\hyperref[sec:label]{text}). **They must be substituted last!**
     
-    return regex.sub(pattern, r'*\1*', text)
+"""
 
-def replace_dd(text):
-    pattern = r'\\dd(\{(?:[^{}]+|(?1))*\})'
-    
-    return regex.sub(pattern, lambda m: r'\\mathrm{d}\{' + m.group(1)[1:-1] + r'\}', text)
+def replace_math_operator(text: str, source: str | List[str], target: str | List[str], mode: Literal['normal', 'recursive', "legacy", "simple", "isolated"] = 'normal') -> str:
+    """
+    Replace math operators in the given text with their Markdown equivalents.
 
-def replace_expval(text):
-    pattern = r'\\expval(\{(?:[^{}]+|(?1))*\})'
+    Args:
+        text (str): The input text containing LaTeX commands.
+        source (str | List[str]): The source string(s) to be replaced.
+        target (str | List[str]): The replacement pattern(s).
+        mode (Literal['normal', 'recursive', "legacy", "simple", "isolated"]): The mode of replacement. 
+            'normal' for parametered non-nested patterns, 'recursive' for nested patterns, "legacy" for legacy patterns, "simple" for simple patterns (with no parameters), and "isolated" for simple patterns that are not part of a larger word.
+    """
     
-    return regex.sub(pattern, lambda m: r'\left\langle ' + m.group(1)[1:-1] + r'\righr\rangle ', text)
-
-def replace_N(text):
-    pattern = r'\\N(?![a-zA-Z0-9])'
+    if mode == 'normal':
+        if isinstance(source, str):
+            pattern = source + r'\{(.*?)\}'
+        elif isinstance(source, List):
+            pattern = source[0] + r'\{(.*?)\}' + source[1]
+        
+        if isinstance(target, List):
+            target_pattern = target[0] + r'\1' + target[1]
+            return regex.sub(pattern, target_pattern, text)
+        elif isinstance(target, str):
+            target_pattern = target + '{' + r'\1' + '}'
+            return regex.sub(pattern, target_pattern, text)
+        else:
+            raise ValueError("Target must be a string or a list of strings.")
+        
+    elif mode == 'recursive':
+        if isinstance(source, str):
+            pattern = source + r"\{(?P<arg>(?:[^{}]+|\{(?P>arg)\})*)\}"
+        elif isinstance(source, List):
+            pattern = source[0] + r"(?P<arg>(?:[^{}]+|\{(?P>arg)\})*)" + source[1]
+            
+        pattern = regex.compile(pattern)
+        
+        if isinstance(target, List):
+            target_1, target_2 = target[0], target[1]
+            while pattern.search(text):
+                text = pattern.sub(target_1 + r'\g<arg>' + target_2, text)
+            return text
+        elif isinstance(target, str):
+            while pattern.search(text):
+                text = pattern.sub(target + r'{\g<arg>}', text)
+            return text
+        else:
+            raise ValueError("Target must be a string or a list of strings.")
+        
+    elif mode == 'legacy':
+        assert isinstance(source, str), "Source must be a string for legacy mode."
+        pattern = source + r"(\{(?:[^{}]+|(?1))*\})"
+        
+        if isinstance(target, str):    
+            return regex.sub(pattern, lambda m: target + '{' + m.group(1)[1:-1] + '}', text)
+        elif isinstance(target, List):
+            target_1, target_2 = target[0], target[1]
+            return regex.sub(pattern, lambda m: target_1 + m.group(1)[1:-1] + target_2, text)
+        else:
+            raise ValueError("Target must be a string or a list of strings.")
+        
+    elif mode == 'simple':
+        assert type(target) is str, "Target must be a string for simple mode."
+        return regex.sub(source, target, text)
     
-    return regex.sub(pattern, r'\\mathbb{N} ', text)
-
-def replace_Z(text):
-    pattern = r'\\Z(?![a-zA-Z0-9])'
+    elif mode == 'isolated':
+        assert type(target) is str, "Target must be a string for isolated mode."
+        pattern = source + r'(?![a-zA-Z0-9])'
+        return regex.sub(pattern, target, text)
     
-    return regex.sub(pattern, r'\\mathbb{Z} ', text)
-
-def replace_Q(text):
-    pattern = r'\\Q(?![a-zA-Z0-9])'
+    else:
+        raise ValueError("Mode must be one of 'normal', 'recursive', 'legacy', 'simple', or 'isolated'.")
     
-    return regex.sub(pattern, r'\\mathbb{Q} ', text)
-
-def replace_R(text):
-    pattern = r'\\R(?![a-zA-Z0-9])'
-    
-    return regex.sub(pattern, r'\\mathbb{R} ', text)
-
-def replace_C(text):
-    pattern = r'\\C(?![a-zA-Z0-9])'
-    
-    return regex.sub(pattern, r'\\mathbb{C} ', text)
-
-def replace_F(text):
-    pattern = r'\\F(?![a-zA-Z0-9])'
-    
-    return regex.sub(pattern, r'\\mathbb{F} ', text)
-
-def replace_D(text):
-    pattern = r'\\D(?![a-zA-Z0-9])'
-    
-    return regex.sub(pattern, r'\\mathbb{D} ', text)
-
-def replace_B(text):
-    pattern = r'\\B(?![a-zA-Z0-9])'
-    
-    return regex.sub(pattern, r'\\mathcal{B} ', text)
-
-def replace_newline(text):
-    pattern = r'\\\\'
-    
-    return regex.sub(pattern, r'\n', text)
-
-def replace_tcbline(text):
-    pattern = r'\\tcbline'
-    
-    return regex.sub(pattern, r'\n---\n', text)
-
-def replace_i(text):
-    pattern = r'\\ii(?![a-zA-Z0-9])'
-    
-    return regex.sub(pattern, r'\\mathrm{i} ', text)
-
-def replace_op_distance(text):
-    pattern = r'\\dist'
-    
-    return regex.sub(pattern, r'\\operatorname{dist} ', text)
-
-def replace_op_span(text):
-    pattern = r'\\spn'
-    
-    return regex.sub(pattern, r'\\operatorname{span} ', text)
-
-def replace_op_card(text):
-    pattern = r'\\card'
-    
-    return regex.sub(pattern, r'\\operatorname{card} ', text)
-
-def replace_op_intr(text):
-    pattern = r'\\interior'
-    
-    return regex.sub(pattern, r'\\operatorname{int} ', text)
-
-def replace_op_im(text):
-    pattern = r'\\img'
-    
-    return regex.sub(pattern, r'\\operatorname{im} ', text)
-
-def replace_op_esssum(text):
-    pattern = r'\\esssum'
-    
-    return regex.sub(pattern, r'\\operatorname*{esssum} ', text)
-
-def replace_mlim(text):
-    pattern = r'\\mlim'
-    
-    return regex.sub(pattern, r'\\xrightarrow{m} ', text)
-
-def replace_wlim(text):
-    pattern = r'\\wlim'
-    
-    return regex.sub(pattern, r'\\xrightarrow{w} ', text)
-
-def replace_wslim(text):
-    pattern = r'\\wslim'
-    
-    return regex.sub(pattern, r'\\xrightarrow{w^*} ', text)
-
-def replace_aelim(text):
-    pattern = r'\\aelim'
-    
-    return regex.sub(pattern, r'\\xrightarrow{\\text{a.e.}} ', text)
-
-def replace_st(text):
-    pattern = r'\\st(?![a-zA-Z0-9])'
-    
-    return regex.sub(pattern, r'\\text{s.t. } ', text)
-
-def replace_blo(text):
-    pattern = r'\\blo(?![a-zA-Z0-9])'
-    
-    return regex.sub(pattern, r'\\mathscr{B} ', text)
-
-def replace_cpt(text):
-    pattern = r'\\cpt(?![a-zA-Z0-9])'
-    
-    return regex.sub(pattern, r'\\mathscr{K} ', text)
-
-def replace_fnrank(text):
-    pattern = r'\\fnrank(?![a-zA-Z0-9])'
-    
-    return regex.sub(pattern, r'\\mathscr{F} ', text)
-
-def replace_Cont(text):
-    pattern = r'\\Cont(?![a-zA-Z0-9])'
-    
-    return regex.sub(pattern, r'\\mathrm{C} ', text)
-
-def replace_Lp(text):
-    pattern = r'\\Lp(?![a-zA-Z0-9])'
-    
-    return regex.sub(pattern, r'\\mathrm{L} ', text)
-
-def replace_ordinal(text):
-    pattern = r'\\ordinal'
-    
-    return regex.sub(pattern, r'\\mathbb{O} ', text)
-
-def replace_qty(text):
-    pattern = r'\\qty(\{(?:[^{}]+|(?1))*\})'
-    
-    return regex.sub(pattern, lambda m: r'\left\\{ ' + m.group(1)[1:-1] + r' \right\\{', text)
-
-def replace_qty2(text):
-    pattern = r'\\qty(\((?:[^()]+|(?1))*\))'
-    
-    return regex.sub(pattern, lambda m: r'\left( ' + m.group(1)[1:-1] + r' \right)', text)
-
-def replace_implies(text):
-    pattern = r'\\implies'
-    
-    return regex.sub(pattern, r'\\Rightarrow ', text)
-
-def replace_iff(text):
-    pattern = r'\\iff'
-    
-    return regex.sub(pattern, r'\\Leftrightarrow ', text)
-
-def replace_impliedby(text):
-    pattern = r'\\impliedby'
-    
-    return regex.sub(pattern, r'\\Leftarrow ', text)
+TASK_LIST = [
+    [r"\\norm", [r'\\left\\lVert ', r' \\right\\rVert'], 'recursive'],
+    [r"\\abs", [r'\\left\\lvert ', r' \\right\\rvert'], 'recursive'],
+    [r"\\textbf", [r'**', r'**'], 'normal'],
+    [r"\\textit", [r'*', r'*'], 'normal'],
+    [r"\\dd", r'\\mathrm{d}', 'legacy'],
+    [r"\\expval", [r'\\left\\langle ', r'\\right\\rangle '], 'recursive'],
+    [r"\\N", r'\\mathbb{N} ', 'isolated'],
+    [r"\\Z", r'\\mathbb{Z} ', 'isolated'],
+    [r"\\Q", r'\\mathbb{Q} ', 'isolated'],
+    [r"\\R", r'\\mathbb{R} ', 'isolated'],
+    [r"\\C", r'\\mathbb{C} ', 'isolated'],
+    [r"\\F", r'\\mathbb{F} ', 'isolated'],
+    [r"\\D", r'\\mathbb{D} ', 'isolated'],
+    [r"\\B", r'\\mathcal{B} ', 'isolated'],
+    [r"\\\\", r'\n', 'simple'],
+    [r"\\tcbline", r'\n---\n', 'simple'],
+    [r"\\ii", r'\\mathrm{i} ', 'isolated'],
+    [r"\\dist", r'\\operatorname{dist} ', 'simple'],
+    [r"\\spn", r'\\operatorname{span} ', 'simple'],
+    [r"\\card", r'\\operatorname{card} ', 'simple'],
+    [r"\\interior", r'\\operatorname{int} ', 'simple'],
+    [r"\\img", r'\\operatorname{im} ', 'simple'],
+    [r"\\esssum", r'\\operatorname*{esssum} ', 'simple'],
+    [r"\\mlim", r'\\xrightarrow{m} ', 'simple'],
+    [r"\\wlim", r'\\xrightarrow{w} ', 'simple'],
+    [r"\\wslim", r'\\xrightarrow{w^*} ', 'simple'],
+    [r"\\aelim", r'\\xrightarrow{\\text{a.e.}} ', 'simple'],
+    [r"\\st", r'\\text{s.t. } ', 'isolated'],
+    [r"\\blo", r'\\mathscr{B} ', 'isolated'],
+    [r"\\cpt", r'\\mathscr{K} ', 'isolated'],
+    [r"\\fnrank", r'\\mathscr{F} ', 'isolated'],
+    [r"\\Cont", r'\\mathrm{C} ', 'isolated'],
+    [r"\\Lp", r'\\mathrm{L} ', 'isolated'],
+    [r"\\ordinal", r'\\mathbb{O} ', 'simple'],
+    [r"\\qty", [r'\\left\\{ ', r' \\right\\}'], 'recursive'],
+    [[r"\\qty\(", r"\)"], [r'\\left( ', r' \\right)'], 'recursive'],
+    [[r"\\qty\[", r"\]"], [r'\\left[ ', r' \\right]'], 'recursive'],
+    [r"\\implies", r'\\Rightarrow ', 'simple'],
+    [r"\\iff", r'\\Leftrightarrow ', 'simple'],
+    [r"\\impliedby", r'\\Leftarrow ', 'simple'],
+]
 
 def replace_hyperref(text):
     pattern = r'\\hyperref\[(.*?)\]\{(.*?)\}'
     
     return regex.sub(pattern, r'[\2](#\1)', text)
 
-def replace_all(text):
-    text = replace_norm_recursive(text)
-    text = replace_abs_recursive(text)
-    text = replace_textbf(text)
-    text = replace_textit(text)
-    text = replace_dd(text)
-    text = replace_expval(text)
-    text = replace_N(text)
-    text = replace_Z(text)
-    text = replace_Q(text)
-    text = replace_R(text)
-    text = replace_C(text)
-    text = replace_F(text)
-    text = replace_D(text)
-    text = replace_B(text)
-    text = replace_newline(text)
-    text = replace_tcbline(text)
-    text = replace_i(text)
-    text = replace_op_distance(text)
-    text = replace_op_span(text)
-    text = replace_op_card(text)
-    text = replace_op_intr(text)
-    text = replace_op_im(text)
-    text = replace_op_esssum(text)
-    text = replace_mlim(text)
-    text = replace_wlim(text)
-    text = replace_wslim(text)
-    text = replace_aelim(text)
-    text = replace_st(text)
-    text = replace_blo(text)
-    text = replace_Cont(text)
-    text = replace_cpt(text)
-    text = replace_fnrank(text)
-    text = replace_Lp(text)
-    text = replace_ordinal(text)
-    text = replace_qty(text)
-    text = replace_qty2(text)
-    text = replace_implies(text)
-    text = replace_iff(text)
-    text = replace_impliedby(text)
+
+def replace_all(text: str) -> str:
+    """
+    Replace all LaTeX commands in the given text with their Markdown equivalents.
+    """
+    for task in TASK_LIST:
+        text = replace_math_operator(text, task[0], task[1], task[2])
+        
     text = replace_hyperref(text)
+        
     return text
 
 def replace(json_path: str, output_json_path: str):
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
+        
+    n = len(data)
     
-    for item in data:
+    for i, item in enumerate(data):
         item['content'] = replace_all(item['content'])
+        #print(f"Processed {i+1}/{n} items.")
     
     with open(output_json_path, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
