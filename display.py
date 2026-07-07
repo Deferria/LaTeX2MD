@@ -52,11 +52,8 @@ def display(json_path: str) -> str:
 
     return markdown
 
-def to_markdown(json_path: str, md_path: str):
+def display_markdown(json_path: str, md_path: str):
     markdown_content_list = display(json_path)
     markdown_content = '\n\n'.join(markdown_content_list)
     with open(md_path, 'w', encoding='utf-8') as f:
         f.write(markdown_content)
-
-if __name__ == '__main__':
-    to_markdown('./formatted.json', './output.md')

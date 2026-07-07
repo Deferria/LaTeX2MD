@@ -91,7 +91,7 @@ TASK_LIST = [
     [r"\\abs", [r'\\left\\lvert ', r' \\right\\rvert'], 'recursive'],
     [r"\\textbf", [r'**', r'**'], 'normal'],
     [r"\\textit", [r'*', r'*'], 'normal'],
-    [r"\\dd", r'\\mathrm{d}', 'legacy'],
+    [r"\\dd", [r'\\mathrm{d} ', ' '], 'normal'],
     [r"\\expval", [r'\\left\\langle ', r'\\right\\rangle '], 'recursive'],
     [r"\\N", r'\\mathbb{N} ', 'isolated'],
     [r"\\Z", r'\\mathbb{Z} ', 'isolated'],
@@ -146,13 +146,12 @@ def replace_all(text: str) -> str:
         
     return text
 
-def replace(json_path: str, output_json_path: str):
+def replace_json(json_path: str, output_json_path: str):
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
-        
-    n = len(data)
-    
-    for i, item in enumerate(data):
+
+    for item in data:
+        #print(type(item))
         item['content'] = replace_all(item['content'])
         #print(f"Processed {i+1}/{n} items.")
     

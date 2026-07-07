@@ -1,7 +1,7 @@
-from extract import to_json
-from convert import json_to_json
-from display import to_markdown
-from macroexcape import replace
+from extract import extract_json
+from convert import convert_json
+from display import display_markdown
+from macroexcape import replace_json
 
 import argparse
 
@@ -17,11 +17,11 @@ args = parser.parse_args()
 if __name__ == '__main__':
     tex = args.input
     markdown = args.output
-    to_json(tex, EXTRACTED_JSON)
+    extract_json(tex, EXTRACTED_JSON)
     print("Part 1: Extract TeX to JSON, done.")
-    json_to_json(EXTRACTED_JSON, FORMATTED_JSON)
+    convert_json(EXTRACTED_JSON, FORMATTED_JSON)
     print("Part 2: Markdown escape, done.")
-    replace(FORMATTED_JSON, REPLACED_JSON)
+    replace_json(FORMATTED_JSON, REPLACED_JSON)
     print("Part 3: Convert LaTeX macros to KaTeX compatible, done.")
-    to_markdown(REPLACED_JSON, markdown)
+    display_markdown(REPLACED_JSON, markdown)
     print("Part 4: Render Markdown, done.")
