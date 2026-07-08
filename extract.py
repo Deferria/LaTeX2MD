@@ -3,7 +3,7 @@
 import re
 import json
 
-from typing import List, Callable, Literal
+from typing import List, Callable, Literal, Dict
 
 # This is an ANNOYING constraint: Your TeX envs must be indented by 2*4 spaces and the inner content must be indented by 3*4 spaces. Otherwise, the extraction will fail.
 # There are no both easy and feasible solutions.
@@ -25,6 +25,39 @@ def basic_appender(envname: str, uuid: str, name: str, alias: str, contrib: str,
         "alias": alias,
         "contrib": contrib,
         "content": content
+    }
+    
+def fulcrum_appender(envname: str, uuid: str, name: str, alias: str, contrib: str, content: str) -> dict:
+    env_to_kind = {
+        'dfn': 'definition',
+        'rmk': 'remark',
+        'thm': 'theorem',
+        'ppt': 'property',
+        'crl': 'corollary',
+        'prf': 'proof',
+        'xmp': 'example',
+        'ins': 'instance',
+        'cxmp': 'counterexample',
+        'intrormk': 'introduction',
+        'vardfn': 'definition',
+        'varthm': 'theorem',
+    }
+        
+    title = name
+    if name is None:
+        if alias is not None:
+            title = alias
+        else:
+            title = ''
+
+    return {
+        "id": uuid,
+        "kind": env_to_kind.get(envname, envname),
+        "title": title,
+        "content": {
+            "latex": content
+        },
+        "contribution_info": contrib,
     }
 
 def extract(tex: str, append_option: Callable[[str, str, str, str, str, str], dict]) -> List[str]:
@@ -77,9 +110,9 @@ def extract(tex: str, append_option: Callable[[str, str, str, str, str, str], di
 
     return formatted
 
-def extract_json(tex_path: str, json_path: str):
+def extract_json(tex_path: str, json_path: str, append_option: Callable[..., Dict[str, str]] = basic_appender) -> None:
     with open(tex_path, 'r', encoding='utf-8') as f:
         tex = f.read()
-    formatted = extract(tex, append_option=basic_appender)
+    formatted = extract(tex, append_option=append_option)
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(formatted, f, ensure_ascii=False, indent=4)

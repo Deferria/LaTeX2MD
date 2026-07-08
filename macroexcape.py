@@ -1,7 +1,7 @@
 import regex
 import json
 
-from typing import Callable, List, Literal
+from typing import Callable, List, Literal, Any
 
 """
 Replace some LaTeX commands with their Markdown equivalents in a given text. 
@@ -15,7 +15,7 @@ The order should be:
     
 """
 
-def replace_math_operator(text: str, source: str | List[str], target: str | List[str], mode: Literal['normal', 'recursive', "legacy", "simple", "isolated"] = 'normal') -> str:
+def replace_math_operator(text: str, source: str | List[str], target: str | List[str], mode: Literal['normal', 'recursive', "legacy", "simple", "isolated", "string"] = 'normal') -> str:
     """
     Replace math operators in the given text with their Markdown equivalents.
 
@@ -23,8 +23,8 @@ def replace_math_operator(text: str, source: str | List[str], target: str | List
         text (str): The input text containing LaTeX commands.
         source (str | List[str]): The source string(s) to be replaced.
         target (str | List[str]): The replacement pattern(s).
-        mode (Literal['normal', 'recursive', "legacy", "simple", "isolated"]): The mode of replacement. 
-            'normal' for parametered non-nested patterns, 'recursive' for nested patterns, "legacy" for legacy patterns, "simple" for simple patterns (with no parameters), and "isolated" for simple patterns that are not part of a larger word.
+        mode (Literal['normal', 'recursive', "legacy", "simple", "isolated", "string"]): The mode of replacement.
+            'normal' for parametered non-nested patterns, 'recursive' for nested patterns, "legacy" for legacy patterns, "simple" for simple patterns (with no parameters), "isolated" for simple patterns that are not part of a larger word, 'string' for simple string replacement.
     """
     
     if mode == 'normal':
@@ -83,6 +83,10 @@ def replace_math_operator(text: str, source: str | List[str], target: str | List
         pattern = source + r'(?![a-zA-Z0-9])'
         return regex.sub(pattern, target, text)
     
+    elif mode == 'string':
+        assert type(target) is str, "Target must be a string for string mode."
+        return text.replace(source, target)
+    
     else:
         raise ValueError("Mode must be one of 'normal', 'recursive', 'legacy', 'simple', or 'isolated'.")
     
@@ -135,24 +139,26 @@ def replace_hyperref(text):
     return regex.sub(pattern, r'[\2](#\1)', text)
 
 
-def replace_all(text: str) -> str:
+def replace_all(text: str, external_cmds: List[List[Any]] = []) -> str:
     """
     Replace all LaTeX commands in the given text with their Markdown equivalents.
     """
-    for task in TASK_LIST:
+    
+    task_list = TASK_LIST + external_cmds
+    for task in task_list:
         text = replace_math_operator(text, task[0], task[1], task[2])
         
     text = replace_hyperref(text)
         
     return text
 
-def replace_json(json_path: str, output_json_path: str):
+def replace_json(json_path: str, output_json_path: str, external_cmds: List[List[Any]] = []) -> None:
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
     for item in data:
         #print(type(item))
-        item['content'] = replace_all(item['content'])
+        item['content'] = replace_all(item['content'], external_cmds)
         #print(f"Processed {i+1}/{n} items.")
     
     with open(output_json_path, 'w', encoding='utf-8') as f:

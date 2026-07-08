@@ -2,6 +2,7 @@ from extract import extract_json
 from convert import convert_json
 from display import display_markdown
 from macroexcape import replace_json
+from macroinfo import get_command_from_file
 
 import argparse
 
@@ -12,6 +13,7 @@ REPLACED_JSON = './replaced.json'
 parser = argparse.ArgumentParser(description='Process LaTeX file and convert to Markdown.')
 parser.add_argument('-i', '--input', type=str, default='./for_testing.txt', help='Path to the input LaTeX file')
 parser.add_argument('-o', '--output', type=str, default='./output.md', help='Path to the output Markdown file')
+parser.add_argument('-p', '--preamble', type=str, default='', help='Path to the preamble file (Optional)')
 parser.add_argument('-u', '--unsafe', action='store_false', help='If true, do not escape unsafe characters in Markdown')
 args = parser.parse_args()
 
@@ -20,12 +22,17 @@ if __name__ == '__main__':
     markdown = args.output
     extract_json(tex, EXTRACTED_JSON)
     print("Extract TeX to JSON, done.")
+    if len(args.preamble) > 0:
+        external_cmds = get_command_from_file(args.preamble)
+    else:
+        external_cmds = []
+    print(f"External commands: {external_cmds}")
     if not args.unsafe:
-        replace_json(EXTRACTED_JSON, REPLACED_JSON)
+        replace_json(EXTRACTED_JSON, REPLACED_JSON, external_cmds=external_cmds)
     else:
         convert_json(EXTRACTED_JSON, FORMATTED_JSON)
         print("Markdown escape, done.")
-        replace_json(FORMATTED_JSON, REPLACED_JSON)
+        replace_json(FORMATTED_JSON, REPLACED_JSON, external_cmds=external_cmds)
     print("Convert LaTeX macros to KaTeX compatible, done.")
     display_markdown(REPLACED_JSON, markdown)
     print("Render Markdown, done.")
